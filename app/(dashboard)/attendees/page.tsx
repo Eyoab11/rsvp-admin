@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Users, Eye, Filter } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
-import { Attendee, Event, AttendeeStatus, InviteType } from '@/lib/types';
+import { Attendee, Event, AttendeeStatus } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 import { useToast } from '@/lib/hooks/useToast';
@@ -27,43 +27,36 @@ interface AttendeeRow {
     eventName: string;
     eventDate: string;
   };
-  invite?: {
-    inviteType: InviteType;
-  };
   createdAt: string;
   type: 'ATTENDEE' | 'PLUSONE';
-  primaryAttendeeName?: string; // For plus-ones
-  plusOneName?: string; // For attendees with plus-ones
+  primaryAttendeeName?: string;
+  plusOneName?: string;
 }
 
 export default function AttendeesPage() {
   const router = useRouter();
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [attendeeRows, setAttendeeRows] = useState<AttendeeRow[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
   const [filteredAttendees, setFilteredAttendees] = useState<AttendeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendeeStatus | 'ALL'>('ALL');
   const [attendeeTypeFilter, setAttendeeTypeFilter] = useState<AttendeeType>('ALL');
-  const [inviteTypeFilter, setInviteTypeFilter] = useState<InviteType | 'ALL'>('ALL');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const { toasts, closeToast, success, error: showError } = useToast();
+  const { toasts, closeToast } = useToast();
 
   useEffect(() => {
     fetchData();
   }, []);
 
   useEffect(() => {
-    // Convert attendees to rows (including plus-ones as separate rows)
     const rows: AttendeeRow[] = [];
     
     attendees.forEach(attendee => {
-      // Add main attendee
       rows.push({
         id: attendee.id,
         name: attendee.name,
@@ -74,13 +67,11 @@ export default function AttendeesPage() {
         registrationId: attendee.registrationId,
         eventId: attendee.eventId,
         event: attendee.event,
-        invite: attendee.invite,
         createdAt: attendee.createdAt,
         type: 'ATTENDEE',
         plusOneName: attendee.plusOne?.name,
       });
       
-      // Add plus-one as separate row if exists
       if (attendee.plusOne) {
         rows.push({
           id: `plusone-${attendee.plusOne.id}`,
@@ -104,25 +95,21 @@ export default function AttendeesPage() {
 
   useEffect(() => {
     filterAndSortAttendees();
-  }, [attendeeRows, searchQuery, statusFilter, attendeeTypeFilter, inviteTypeFilter, sortField, sortOrder]);
+  }, [attendeeRows, searchQuery, statusFilter, attendeeTypeFilter, sortField, sortOrder]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Fetch all events first
       const eventsData = await api.get<Event[]>(endpoints.events.list());
-      setEvents(eventsData);
 
-      // Fetch attendees for all events
       const allAttendees: Attendee[] = [];
       for (const event of eventsData) {
         try {
           const eventAttendees = await api.get<Attendee[]>(
             `/admin/events/${event.id}/attendees`
           );
-          // Add event info to each attendee
           const attendeesWithEvent = eventAttendees.map(a => ({
             ...a,
             event: {
@@ -147,7 +134,6 @@ export default function AttendeesPage() {
   const filterAndSortAttendees = () => {
     let filtered = [...attendeeRows];
 
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -160,24 +146,14 @@ export default function AttendeesPage() {
       );
     }
 
-    // Apply attendee type filter
     if (attendeeTypeFilter !== 'ALL') {
       filtered = filtered.filter((row) => row.type === attendeeTypeFilter);
     }
 
-    // Apply status filter
     if (statusFilter !== 'ALL') {
       filtered = filtered.filter((row) => row.status === statusFilter);
     }
 
-    // Apply invite type filter (only for attendees, not plus-ones)
-    if (inviteTypeFilter !== 'ALL') {
-      filtered = filtered.filter((row) => 
-        row.type === 'PLUSONE' || row.invite?.inviteType === inviteTypeFilter
-      );
-    }
-
-    // Apply sorting
     filtered.sort((a, b) => {
       let aValue: any = a[sortField];
       let bValue: any = b[sortField];
@@ -221,20 +197,6 @@ export default function AttendeesPage() {
     }
   };
 
-  const getInviteTypeBadgeColor = (type: InviteType): string => {
-    switch (type) {
-      case 'VIP':
-        return 'bg-purple-100 text-purple-800';
-      case 'PARTNER':
-        return 'bg-blue-100 text-blue-800';
-      case 'GENERAL':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Pagination
   const totalPages = Math.ceil(filteredAttendees.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -251,31 +213,33 @@ export default function AttendeesPage() {
   return (
     <div className="p-4 md:p-6">
       <ToastContainer toasts={toasts} onClose={closeToast} />
-      
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Attendees</h1>
-        <p className="text-gray-600 mt-1 text-sm md:text-base">Manage event attendees and registrations</p>
+
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Attendees</h1>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">Manage event attendees and registrations</p>
+        </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="sm:col-span-2 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search attendees..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            />
-          </div>
-          
+      {/* Filters */}
+      <div className="bg-white rounded-lg border border-gray-200 p-3 mb-6">
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-2">
           <select
             value={attendeeTypeFilter}
             onChange={(e) => setAttendeeTypeFilter(e.target.value as AttendeeType)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium"
+            className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-xs"
           >
             <option value="ALL">All</option>
             <option value="ATTENDEE">Attendees</option>
@@ -285,197 +249,197 @@ export default function AttendeesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as AttendeeStatus | 'ALL')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-xs"
           >
-            <option value="ALL">All Statuses</option>
+            <option value="ALL">Status</option>
             <option value="CONFIRMED">Confirmed</option>
             <option value="WAITLISTED">Waitlisted</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
 
           <select
-            value={inviteTypeFilter}
-            onChange={(e) => setInviteTypeFilter(e.target.value as InviteType | 'ALL')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-xs"
           >
-            <option value="ALL">All Types</option>
-            <option value="VIP">VIP</option>
-            <option value="PARTNER">Partner</option>
-            <option value="GENERAL">General</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
           </select>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-200">
-          <div className="text-sm text-gray-600">
-            Showing {filteredAttendees.length} {attendeeTypeFilter === 'ALL' ? 'record' : attendeeTypeFilter === 'ATTENDEE' ? 'attendee' : 'plus one'}{filteredAttendees.length !== 1 ? 's' : ''}
-          </div>
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          >
-            <option value={10}>10 per page</option>
-            <option value={20}>20 per page</option>
-            <option value={50}>50 per page</option>
-            <option value={100}>100 per page</option>
-          </select>
+        <div className="text-xs text-gray-600">
+          {filteredAttendees.length} result{filteredAttendees.length !== 1 ? 's' : ''}
         </div>
       </div>
 
-      {/* Attendees Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      {/* Mobile Cards */}
+      <div className="md:hidden space-y-3 mb-6">
+        {paginatedAttendees.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500 text-sm shadow-sm">
+            No attendees found
+          </div>
+        ) : (
+          paginatedAttendees.map((row) => (
+            <div
+              key={row.id}
+              className={`bg-white rounded-lg border-l-4 border border-gray-200 p-3 shadow-sm ${
+                row.type === 'PLUSONE' ? 'border-l-purple-500' : 'border-l-blue-500'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-slate-900 text-sm truncate">{row.name}</h3>
+                  <p className="text-xs text-slate-600 truncate">{row.email}</p>
+                </div>
+                <span
+                  className={`ml-2 flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
+                    row.type === 'ATTENDEE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                  }`}
+                >
+                  {row.type === 'ATTENDEE' ? 'Attendee' : 'Plus One'}
+                </span>
+              </div>
+
+              <div className="space-y-1 text-xs mb-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">ID:</span>
+                  <span className="font-mono text-slate-900">{row.registrationId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Company:</span>
+                  <span className="text-slate-900 truncate ml-2">{row.company}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Status:</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      row.status === 'PLUS_ONE' ? 'bg-purple-100 text-purple-800' : getStatusBadgeColor(row.status as AttendeeStatus)
+                    }`}
+                  >
+                    {row.status === 'PLUS_ONE' ? 'Plus One' : row.status}
+                  </span>
+                </div>
+              </div>
+
+              {row.type === 'ATTENDEE' && (
+                <button
+                  onClick={() => router.push(`/attendees/${row.id}`)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs font-medium"
+                >
+                  <Eye size={14} />
+                  View
+                </button>
+              )}
+            </div>
+          ))
+        )}
+
+        {totalPages > 1 && (
+          <div className="bg-white rounded-lg border border-slate-200 p-3">
+            <div className="text-xs text-slate-700 text-center mb-2">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 text-xs"
+              >
+                Prev
+              </button>
+              <span className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs font-medium">
+                {currentPage}
+              </span>
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 text-xs"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-white rounded-lg border border-slate-200">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Reg ID</th>
+                <th onClick={() => handleSort('name')} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100 whitespace-nowrap">
+                  Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reg ID
+                <th onClick={() => handleSort('email')} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100 whitespace-nowrap">
+                  Email {sortField === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
-                <th
-                  onClick={() => handleSort('name')}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-1">
-                    Name
-                    {sortField === 'name' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
+                <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100 whitespace-nowrap">
+                  Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
-                <th
-                  onClick={() => handleSort('email')}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-1">
-                    Email
-                    {sortField === 'email' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Related</th>
+                <th onClick={() => handleSort('createdAt')} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100 whitespace-nowrap">
+                  Date {sortField === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
-                <th
-                  onClick={() => handleSort('status')}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    {sortField === 'status' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Invite
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Related
-                </th>
-                <th
-                  onClick={() => handleSort('createdAt')}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-1">
-                    Date
-                    {sortField === 'createdAt' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-200">
               {paginatedAttendees.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-500 text-sm">
-                    {searchQuery || statusFilter !== 'ALL' || attendeeTypeFilter !== 'ALL' || inviteTypeFilter !== 'ALL'
-                      ? 'No records found matching your filters.'
-                      : 'No attendees yet.'}
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500 text-sm">
+                    No attendees found
                   </td>
                 </tr>
               ) : (
                 paginatedAttendees.map((row) => (
-                  <tr key={row.id} className={`hover:bg-gray-50 ${row.type === 'PLUSONE' ? 'bg-blue-50/30' : ''}`}>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                          row.type === 'ATTENDEE'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}
-                      >
+                  <tr key={row.id} className={`hover:bg-slate-50 ${row.type === 'PLUSONE' ? 'bg-purple-50/30' : ''}`}>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${row.type === 'ATTENDEE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
                         {row.type === 'ATTENDEE' ? 'Attendee' : 'Plus One'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-xs font-mono text-gray-900">
-                      {row.registrationId}
+                    <td className="px-4 py-3 text-xs font-mono text-slate-900 whitespace-nowrap">{row.registrationId}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm text-slate-900">{row.name}</div>
+                      <div className="text-xs text-slate-500">{row.title} at {row.company}</div>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="max-w-[200px]">
-                        <div className="font-medium text-sm text-gray-900 truncate">{row.name}</div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {row.title} at {row.company}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-900">
-                      <div className="max-w-[180px] truncate">{row.email}</div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                          row.status === 'PLUS_ONE'
-                            ? 'bg-purple-100 text-purple-800'
-                            : getStatusBadgeColor(row.status as AttendeeStatus)
-                        }`}
-                      >
+                    <td className="px-4 py-3 text-sm text-slate-900">{row.email}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${row.status === 'PLUS_ONE' ? 'bg-purple-100 text-purple-800' : getStatusBadgeColor(row.status as AttendeeStatus)}`}>
                         {row.status === 'PLUS_ONE' ? 'Plus One' : row.status}
                       </span>
                     </td>
-                    <td className="px-3 py-3">
-                      {row.type === 'ATTENDEE' && row.invite ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getInviteTypeBadgeColor(
-                            row.invite.inviteType
-                          )}`}
-                        >
-                          {row.invite.inviteType}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-xs">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       {row.type === 'PLUSONE' && row.primaryAttendeeName ? (
-                        <div className="max-w-[120px]">
+                        <div>
                           <div className="text-xs font-medium text-blue-600">Guest of:</div>
-                          <div className="text-xs text-gray-700 truncate">{row.primaryAttendeeName}</div>
+                          <div className="text-xs text-slate-700">{row.primaryAttendeeName}</div>
                         </div>
                       ) : row.type === 'ATTENDEE' && row.plusOneName ? (
-                        <div className="max-w-[120px]">
+                        <div>
                           <div className="text-xs font-medium text-purple-600">Has guest:</div>
-                          <div className="text-xs text-gray-700 truncate">{row.plusOneName}</div>
+                          <div className="text-xs text-slate-700">{row.plusOneName}</div>
                         </div>
                       ) : (
-                        <span className="text-gray-400 text-xs">-</span>
+                        <span className="text-slate-400 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
                       {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
                     </td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-4 py-3 text-center">
                       {row.type === 'ATTENDEE' && (
                         <button
                           onClick={() => router.push(`/attendees/${row.id}`)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
                         >
                           <Eye size={14} />
-                          <span>View</span>
+                          View
                         </button>
                       )}
                     </td>
@@ -486,17 +450,16 @@ export default function AttendeesPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-4 md:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredAttendees.length)} of {filteredAttendees.length} attendees
+          <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between">
+            <div className="text-sm text-slate-700">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredAttendees.length)} of {filteredAttendees.length}
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-center">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-3 py-1 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 text-sm"
               >
                 Previous
               </button>
@@ -515,10 +478,8 @@ export default function AttendeesPage() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 rounded-lg text-sm ${
-                      currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-gray-300 hover:bg-gray-50'
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      currentPage === page ? 'bg-blue-600 text-white' : 'border border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     {page}
@@ -528,7 +489,7 @@ export default function AttendeesPage() {
               <button
                 onClick={() => setCurrentPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-3 py-1 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 text-sm"
               >
                 Next
               </button>
@@ -539,4 +500,3 @@ export default function AttendeesPage() {
     </div>
   );
 }
-
