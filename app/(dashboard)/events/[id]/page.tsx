@@ -68,7 +68,7 @@ export default function EditEventPage() {
 
     try {
       await api.put(endpoints.events.update(eventId), data);
-      router.push('/dashboard/events');
+      router.push('/events');
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -89,7 +89,7 @@ export default function EditEventPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push('/events')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft size={20} />

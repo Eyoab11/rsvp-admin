@@ -11,6 +11,7 @@ import {
   X,
   BarChart3,
   QrCode,
+  Sheet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { clearAuthToken } from '@/lib/auth';
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { label: 'Invites', href: '/invites', icon: Mail },
   { label: 'Check-In', href: '/check-in', icon: QrCode },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { label: 'Attendee Sheet', href: '/attendee-sheet', icon: Sheet },
 ];
 
 export default function Sidebar() {

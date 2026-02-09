@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Mail, Eye, Send, Copy, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
-import { Invite, Event, InviteType } from '@/lib/types';
+import { Invite, Event } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/lib/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 
-type SortField = 'email' | 'inviteType' | 'createdAt' | 'expiresAt';
+type SortField = 'email' | 'createdAt' | 'expiresAt';
 type SortOrder = 'asc' | 'desc';
 type InviteStatus = 'pending' | 'accepted' | 'expired';
 
@@ -25,7 +25,6 @@ export default function InvitesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<InviteStatus | 'ALL'>('ALL');
   const [eventFilter, setEventFilter] = useState<string>('ALL');
-  const [typeFilter, setTypeFilter] = useState<InviteType | 'ALL'>('ALL');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,7 +41,7 @@ export default function InvitesPage() {
 
   useEffect(() => {
     filterAndSortInvites();
-  }, [invites, searchQuery, statusFilter, eventFilter, typeFilter, sortField, sortOrder]);
+  }, [invites, searchQuery, statusFilter, eventFilter, sortField, sortOrder]);
 
   const fetchData = async () => {
     try {
@@ -109,11 +108,6 @@ export default function InvitesPage() {
     // Apply event filter
     if (eventFilter !== 'ALL') {
       filtered = filtered.filter((invite) => invite.eventId === eventFilter);
-    }
-
-    // Apply type filter
-    if (typeFilter !== 'ALL') {
-      filtered = filtered.filter((invite) => invite.inviteType === typeFilter);
     }
 
     // Apply sorting
@@ -199,19 +193,6 @@ export default function InvitesPage() {
         return <XCircle size={16} />;
       case 'pending':
         return <Clock size={16} />;
-    }
-  };
-
-  const getTypeBadgeColor = (type: InviteType): string => {
-    switch (type) {
-      case 'VIP':
-        return 'bg-purple-100 text-purple-800';
-      case 'PARTNER':
-        return 'bg-blue-100 text-blue-800';
-      case 'GENERAL':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -312,17 +293,6 @@ export default function InvitesPage() {
             <option value="accepted">Accepted</option>
             <option value="expired">Expired</option>
           </select>
-
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as InviteType | 'ALL')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          >
-            <option value="ALL">All Types</option>
-            <option value="VIP">VIP</option>
-            <option value="PARTNER">Partner</option>
-            <option value="GENERAL">General</option>
-          </select>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-200">
@@ -362,10 +332,7 @@ export default function InvitesPage() {
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Event
                 </th>
-                <th
-                  onClick={() => handleSort('inviteType')}
-                  className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                >
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Type
                     {sortField === 'inviteType' && (
@@ -406,8 +373,8 @@ export default function InvitesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvites.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 md:px-6 py-12 text-center text-gray-500 text-sm">
-                    {searchQuery || statusFilter !== 'ALL' || eventFilter !== 'ALL' || typeFilter !== 'ALL'
+                  <td colSpan={6} className="px-4 md:px-6 py-12 text-center text-gray-500 text-sm">
+                    {searchQuery || statusFilter !== 'ALL' || eventFilter !== 'ALL'
                       ? 'No invites found matching your filters.'
                       : 'No invites yet. Create your first invite!'}
                   </td>
@@ -430,15 +397,6 @@ export default function InvitesPage() {
                             {invite.event?.eventDate && new Date(invite.event.eventDate).toLocaleDateString()}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeBadgeColor(
-                            invite.inviteType
-                          )}`}
-                        >
-                          {invite.inviteType}
-                        </span>
                       </td>
                       <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         <span

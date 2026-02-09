@@ -189,7 +189,7 @@ export default function InviteDetailsPage() {
           {error || 'Invite not found'}
         </div>
         <button
-          onClick={() => router.push('/dashboard/invites')}
+          onClick={() => router.push('/invites')}
           className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
         >
           <ArrowLeft size={20} />
@@ -208,7 +208,7 @@ export default function InviteDetailsPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/dashboard/invites')}
+          onClick={() => router.push('/invites')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft size={20} />

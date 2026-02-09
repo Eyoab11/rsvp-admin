@@ -1,7 +1,10 @@
 {
   "name": "rsvp-admin",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Event RSVP Admin Dashboard - Modern admin interface for managing events, invitations, and attendees",
+  "author": "",
+  "license": "MIT",
+  "private": false,
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",

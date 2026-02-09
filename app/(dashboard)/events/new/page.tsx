@@ -49,7 +49,7 @@ export default function NewEventPage() {
     try {
       await api.post(endpoints.events.create(), data);
       success('Event Created', 'The event has been created successfully.');
-      setTimeout(() => router.push('/dashboard/events'), 1000);
+      setTimeout(() => router.push('/events'), 1000);
     } catch (err) {
       const errorMsg = getErrorMessage(err);
       setError(errorMsg);
@@ -66,7 +66,7 @@ export default function NewEventPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push('/events')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft size={20} />
@@ -354,7 +354,7 @@ export default function NewEventPage() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => router.back()}
+            onClick={() => router.push('/events')}
           >
             Cancel
           </Button>

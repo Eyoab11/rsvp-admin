@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Mail, Send, Plus, X } from 'lucide-react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
-import { Event, InviteType } from '@/lib/types';
+import { Event } from '@/lib/types';
 import { inviteSchema, InviteFormData } from '@/lib/validation';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Button from '@/components/ui/Button';
@@ -15,7 +15,6 @@ import { ToastContainer } from '@/components/ui/Toast';
 
 interface BulkInvite {
   email: string;
-  inviteType: InviteType;
 }
 
 export default function NewInvitePage() {
@@ -39,7 +38,6 @@ export default function NewInvitePage() {
     defaultValues: {
       email: '',
       eventId: '',
-      inviteType: 'GENERAL',
       sendEmail: true,
     },
   });
@@ -48,7 +46,7 @@ export default function NewInvitePage() {
   const [bulkEventId, setBulkEventId] = useState('');
   const [bulkSendEmails, setBulkSendEmails] = useState(true);
   const [bulkInvites, setBulkInvites] = useState<BulkInvite[]>([
-    { email: '', inviteType: 'GENERAL' }
+    { email: '' }
   ]);
   const [bulkErrors, setBulkErrors] = useState<string | null>(null);
 
@@ -148,7 +146,7 @@ export default function NewInvitePage() {
   };
 
   const addBulkInvite = () => {
-    setBulkInvites([...bulkInvites, { email: '', inviteType: 'GENERAL' }]);
+    setBulkInvites([...bulkInvites, { email: '' }]);
   };
 
   const removeBulkInvite = (index: number) => {
@@ -279,30 +277,6 @@ export default function NewInvitePage() {
               )}
             </div>
 
-            {/* Invite Type */}
-            <div>
-              <label htmlFor="inviteType" className="block text-sm font-medium text-gray-700 mb-2">
-                Invite Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="inviteType"
-                {...register('inviteType')}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.inviteType ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="GENERAL">General</option>
-                <option value="VIP">VIP</option>
-                <option value="PARTNER">Partner</option>
-              </select>
-              {errors.inviteType && (
-                <p className="mt-1 text-sm text-red-600">{errors.inviteType.message}</p>
-              )}
-              <p className="mt-1 text-sm text-gray-500">
-                VIP: High-priority guests | Partner: Business partners | General: Regular attendees
-              </p>
-            </div>
-
             {/* Send Email */}
             <div className="flex items-center gap-3">
               <input
@@ -410,15 +384,6 @@ export default function NewInvitePage() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    <select
-                      value={invite.inviteType}
-                      onChange={(e) => updateBulkInvite(index, 'inviteType', e.target.value)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="GENERAL">General</option>
-                      <option value="VIP">VIP</option>
-                      <option value="PARTNER">Partner</option>
-                    </select>
                     {bulkInvites.length > 1 && (
                       <button
                         type="button"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Users, Eye, Download, Filter } from 'lucide-react';
+import { Search, Users, Eye, Filter } from 'lucide-react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
 import { Attendee, Event, AttendeeStatus, InviteType } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -12,17 +12,41 @@ import { ToastContainer } from '@/components/ui/Toast';
 
 type SortField = 'name' | 'email' | 'status' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
+type AttendeeType = 'ALL' | 'ATTENDEE' | 'PLUSONE';
+
+interface AttendeeRow {
+  id: string;
+  name: string;
+  email: string;
+  company: string;
+  title: string;
+  status: string;
+  registrationId: string;
+  eventId: string;
+  event?: {
+    eventName: string;
+    eventDate: string;
+  };
+  invite?: {
+    inviteType: InviteType;
+  };
+  createdAt: string;
+  type: 'ATTENDEE' | 'PLUSONE';
+  primaryAttendeeName?: string; // For plus-ones
+  plusOneName?: string; // For attendees with plus-ones
+}
 
 export default function AttendeesPage() {
   const router = useRouter();
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [attendeeRows, setAttendeeRows] = useState<AttendeeRow[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [filteredAttendees, setFilteredAttendees] = useState<Attendee[]>([]);
+  const [filteredAttendees, setFilteredAttendees] = useState<AttendeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendeeStatus | 'ALL'>('ALL');
-  const [eventFilter, setEventFilter] = useState<string>('ALL');
+  const [attendeeTypeFilter, setAttendeeTypeFilter] = useState<AttendeeType>('ALL');
   const [inviteTypeFilter, setInviteTypeFilter] = useState<InviteType | 'ALL'>('ALL');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -35,8 +59,52 @@ export default function AttendeesPage() {
   }, []);
 
   useEffect(() => {
+    // Convert attendees to rows (including plus-ones as separate rows)
+    const rows: AttendeeRow[] = [];
+    
+    attendees.forEach(attendee => {
+      // Add main attendee
+      rows.push({
+        id: attendee.id,
+        name: attendee.name,
+        email: attendee.email,
+        company: attendee.company,
+        title: attendee.title,
+        status: attendee.status,
+        registrationId: attendee.registrationId,
+        eventId: attendee.eventId,
+        event: attendee.event,
+        invite: attendee.invite,
+        createdAt: attendee.createdAt,
+        type: 'ATTENDEE',
+        plusOneName: attendee.plusOne?.name,
+      });
+      
+      // Add plus-one as separate row if exists
+      if (attendee.plusOne) {
+        rows.push({
+          id: `plusone-${attendee.plusOne.id}`,
+          name: attendee.plusOne.name,
+          email: attendee.plusOne.email,
+          company: attendee.plusOne.company,
+          title: attendee.plusOne.title,
+          status: 'PLUS_ONE',
+          registrationId: (attendee.plusOne as any).registrationId || `${attendee.registrationId}-P1`,
+          eventId: attendee.eventId,
+          event: attendee.event,
+          createdAt: attendee.createdAt,
+          type: 'PLUSONE',
+          primaryAttendeeName: attendee.name,
+        });
+      }
+    });
+    
+    setAttendeeRows(rows);
+  }, [attendees]);
+
+  useEffect(() => {
     filterAndSortAttendees();
-  }, [attendees, searchQuery, statusFilter, eventFilter, inviteTypeFilter, sortField, sortOrder]);
+  }, [attendeeRows, searchQuery, statusFilter, attendeeTypeFilter, inviteTypeFilter, sortField, sortOrder]);
 
   const fetchData = async () => {
     try {
@@ -77,33 +145,36 @@ export default function AttendeesPage() {
   };
 
   const filterAndSortAttendees = () => {
-    let filtered = [...attendees];
+    let filtered = [...attendeeRows];
 
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (attendee) =>
-          attendee.name.toLowerCase().includes(query) ||
-          attendee.email.toLowerCase().includes(query) ||
-          attendee.registrationId.toLowerCase().includes(query) ||
-          attendee.company.toLowerCase().includes(query)
+        (row) =>
+          row.name.toLowerCase().includes(query) ||
+          row.email.toLowerCase().includes(query) ||
+          row.registrationId.toLowerCase().includes(query) ||
+          row.company.toLowerCase().includes(query) ||
+          (row.primaryAttendeeName && row.primaryAttendeeName.toLowerCase().includes(query))
       );
+    }
+
+    // Apply attendee type filter
+    if (attendeeTypeFilter !== 'ALL') {
+      filtered = filtered.filter((row) => row.type === attendeeTypeFilter);
     }
 
     // Apply status filter
     if (statusFilter !== 'ALL') {
-      filtered = filtered.filter((attendee) => attendee.status === statusFilter);
+      filtered = filtered.filter((row) => row.status === statusFilter);
     }
 
-    // Apply event filter
-    if (eventFilter !== 'ALL') {
-      filtered = filtered.filter((attendee) => attendee.eventId === eventFilter);
-    }
-
-    // Apply invite type filter
+    // Apply invite type filter (only for attendees, not plus-ones)
     if (inviteTypeFilter !== 'ALL') {
-      filtered = filtered.filter((attendee) => attendee.invite?.inviteType === inviteTypeFilter);
+      filtered = filtered.filter((row) => 
+        row.type === 'PLUSONE' || row.invite?.inviteType === inviteTypeFilter
+      );
     }
 
     // Apply sorting
@@ -134,28 +205,6 @@ export default function AttendeesPage() {
     } else {
       setSortField(field);
       setSortOrder('asc');
-    }
-  };
-
-  const handleExport = async () => {
-    if (eventFilter === 'ALL') {
-      alert('Please select a specific event to export attendees.');
-      return;
-    }
-
-    try {
-      const csv = await api.get<string>(`/admin/events/${eventFilter}/export`);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `attendees-${eventFilter}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(getErrorMessage(err));
     }
   };
 
@@ -204,20 +253,9 @@ export default function AttendeesPage() {
       <ToastContainer toasts={toasts} onClose={closeToast} />
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Attendees</h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base">Manage event attendees and registrations</p>
-        </div>
-        <button
-          onClick={handleExport}
-          disabled={eventFilter === 'ALL'}
-          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-        >
-          <Download size={20} />
-          <span className="hidden sm:inline">Export CSV</span>
-          <span className="sm:hidden">Export</span>
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Attendees</h1>
+        <p className="text-gray-600 mt-1 text-sm md:text-base">Manage event attendees and registrations</p>
       </div>
 
       {/* Search and Filters */}
@@ -235,16 +273,13 @@ export default function AttendeesPage() {
           </div>
           
           <select
-            value={eventFilter}
-            onChange={(e) => setEventFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            value={attendeeTypeFilter}
+            onChange={(e) => setAttendeeTypeFilter(e.target.value as AttendeeType)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium"
           >
-            <option value="ALL">All Events</option>
-            {events.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.eventName}
-              </option>
-            ))}
+            <option value="ALL">All</option>
+            <option value="ATTENDEE">Attendees</option>
+            <option value="PLUSONE">Plus Ones</option>
           </select>
 
           <select
@@ -272,7 +307,7 @@ export default function AttendeesPage() {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-600">
-            Showing {filteredAttendees.length} attendee{filteredAttendees.length !== 1 ? 's' : ''}
+            Showing {filteredAttendees.length} {attendeeTypeFilter === 'ALL' ? 'record' : attendeeTypeFilter === 'ATTENDEE' ? 'attendee' : 'plus one'}{filteredAttendees.length !== 1 ? 's' : ''}
           </div>
           <select
             value={pageSize}
@@ -290,17 +325,20 @@ export default function AttendeesPage() {
       {/* Attendees Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max">
+          <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Registration ID
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Reg ID
                 </th>
                 <th
                   onClick={() => handleSort('name')}
-                  className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     Name
                     {sortField === 'name' && (
                       <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
@@ -309,47 +347,44 @@ export default function AttendeesPage() {
                 </th>
                 <th
                   onClick={() => handleSort('email')}
-                  className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     Email
                     {sortField === 'email' && (
                       <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Event
-                </th>
                 <th
                   onClick={() => handleSort('status')}
-                  className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     Status
                     {sortField === 'status' && (
                       <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Type
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Invite
                 </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Plus One
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Related
                 </th>
                 <th
                   onClick={() => handleSort('createdAt')}
-                  className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
-                  <div className="flex items-center gap-2">
-                    Registered
+                  <div className="flex items-center gap-1">
+                    Date
                     {sortField === 'createdAt' && (
                       <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -357,76 +392,92 @@ export default function AttendeesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedAttendees.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 md:px-6 py-12 text-center text-gray-500 text-sm">
-                    {searchQuery || statusFilter !== 'ALL' || eventFilter !== 'ALL' || inviteTypeFilter !== 'ALL'
-                      ? 'No attendees found matching your filters.'
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-500 text-sm">
+                    {searchQuery || statusFilter !== 'ALL' || attendeeTypeFilter !== 'ALL' || inviteTypeFilter !== 'ALL'
+                      ? 'No records found matching your filters.'
                       : 'No attendees yet.'}
                   </td>
                 </tr>
               ) : (
-                paginatedAttendees.map((attendee) => (
-                  <tr key={attendee.id} className="hover:bg-gray-50">
-                    <td className="px-4 md:px-6 py-4 text-xs md:text-sm font-mono text-gray-900 whitespace-nowrap">
-                      {attendee.registrationId}
+                paginatedAttendees.map((row) => (
+                  <tr key={row.id} className={`hover:bg-gray-50 ${row.type === 'PLUSONE' ? 'bg-blue-50/30' : ''}`}>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                          row.type === 'ATTENDEE'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}
+                      >
+                        {row.type === 'ATTENDEE' ? 'Attendee' : 'Plus One'}
+                      </span>
                     </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">{attendee.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {attendee.title} at {attendee.company}
+                    <td className="px-3 py-3 text-xs font-mono text-gray-900">
+                      {row.registrationId}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="max-w-[200px]">
+                        <div className="font-medium text-sm text-gray-900 truncate">{row.name}</div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {row.title} at {row.company}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900 whitespace-nowrap">
-                      {attendee.email}
+                    <td className="px-3 py-3 text-sm text-gray-900">
+                      <div className="max-w-[180px] truncate">{row.email}</div>
                     </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm text-gray-900">{attendee.event?.eventName}</div>
-                        <div className="text-xs text-gray-500">
-                          {attendee.event?.eventDate && new Date(attendee.event.eventDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-3">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
-                          attendee.status
-                        )}`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                          row.status === 'PLUS_ONE'
+                            ? 'bg-purple-100 text-purple-800'
+                            : getStatusBadgeColor(row.status as AttendeeStatus)
+                        }`}
                       >
-                        {attendee.status}
+                        {row.status === 'PLUS_ONE' ? 'Plus One' : row.status}
                       </span>
                     </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInviteTypeBadgeColor(
-                          attendee.invite?.inviteType || 'GENERAL'
-                        )}`}
-                      >
-                        {attendee.invite?.inviteType || 'GENERAL'}
-                      </span>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      {attendee.plusOne ? (
-                        <div>
-                          <div className="text-sm font-medium text-green-600">{attendee.plusOne.name}</div>
-                          <div className="text-xs text-gray-500">{attendee.plusOne.company}</div>
-                        </div>
+                    <td className="px-3 py-3">
+                      {row.type === 'ATTENDEE' && row.invite ? (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getInviteTypeBadgeColor(
+                            row.invite.inviteType
+                          )}`}
+                        >
+                          {row.invite.inviteType}
+                        </span>
                       ) : (
-                        <span className="text-gray-400 text-sm">No</span>
+                        <span className="text-gray-400 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500 whitespace-nowrap">
-                      {new Date(attendee.createdAt).toLocaleDateString()}
+                    <td className="px-3 py-3">
+                      {row.type === 'PLUSONE' && row.primaryAttendeeName ? (
+                        <div className="max-w-[120px]">
+                          <div className="text-xs font-medium text-blue-600">Guest of:</div>
+                          <div className="text-xs text-gray-700 truncate">{row.primaryAttendeeName}</div>
+                        </div>
+                      ) : row.type === 'ATTENDEE' && row.plusOneName ? (
+                        <div className="max-w-[120px]">
+                          <div className="text-xs font-medium text-purple-600">Has guest:</div>
+                          <div className="text-xs text-gray-700 truncate">{row.plusOneName}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
                     </td>
-                    <td className="px-4 md:px-6 py-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => router.push(`/attendees/${attendee.id}`)}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-xs md:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Eye size={16} />
-                        <span className="hidden sm:inline">View</span>
-                      </button>
+                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {row.type === 'ATTENDEE' && (
+                        <button
+                          onClick={() => router.push(`/attendees/${row.id}`)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        >
+                          <Eye size={14} />
+                          <span>View</span>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -488,3 +539,4 @@ export default function AttendeesPage() {
     </div>
   );
 }
+

@@ -11,6 +11,9 @@ export function setAuthToken(token: string): void {
   // Store in localStorage
   localStorage.setItem('auth_token', token);
   
+  // Store timestamp when token was set
+  localStorage.setItem('auth_token_timestamp', Date.now().toString());
+  
   // Store in cookie for middleware (7 days expiry)
   document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
 }
@@ -20,6 +23,7 @@ export function clearAuthToken(): void {
   
   // Clear localStorage
   localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_token_timestamp');
   localStorage.removeItem('user');
   
   // Clear cookie
@@ -27,7 +31,23 @@ export function clearAuthToken(): void {
 }
 
 export function isAuthenticated(): boolean {
-  return !!getAuthToken();
+  const token = getAuthToken();
+  if (!token) return false;
+  
+  // Check if token is expired (7 days = 604800000 ms)
+  const timestamp = localStorage.getItem('auth_token_timestamp');
+  if (timestamp) {
+    const tokenAge = Date.now() - parseInt(timestamp, 10);
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    
+    if (tokenAge > sevenDays) {
+      // Token expired, clear it
+      clearAuthToken();
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 export function getUser(): any {

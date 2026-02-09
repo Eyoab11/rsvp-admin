@@ -37,9 +37,6 @@ export type EventFormData = z.infer<typeof eventSchema>;
 export const inviteSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
   eventId: z.string().min(1, 'Event is required'),
-  inviteType: z.enum(['VIP', 'PARTNER', 'GENERAL'], {
-    errorMap: () => ({ message: 'Invalid invite type' }),
-  }),
   sendEmail: z.boolean(),
 });
 
@@ -48,7 +45,6 @@ export type InviteFormData = z.infer<typeof inviteSchema>;
 // Bulk Invite Item Schema
 export const bulkInviteItemSchema = z.object({
   email: z.string().email('Invalid email address'),
-  inviteType: z.enum(['VIP', 'PARTNER', 'GENERAL']),
 });
 
 // Bulk Invite Form Validation Schema

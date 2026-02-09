@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { isAuthenticated, getUser } from '@/lib/auth';
@@ -12,13 +12,19 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [userName, setUserName] = useState('Admin');
 
   useEffect(() => {
     // Check if user is authenticated (only on client side)
-    if (typeof window !== 'undefined') {
-      if (!isAuthenticated()) {
-        router.push('/login');
-      }
+    if (!isAuthenticated()) {
+      router.push('/login');
+      return;
+    }
+
+    // Get user name after component mounts to avoid hydration mismatch
+    const user = getUser();
+    if (user) {
+      setUserName(user.name || user.email || 'Admin');
     }
   }, [router, pathname]);
 
@@ -40,7 +46,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-slate-900">
-                  {getUserName()}
+                  {userName}
                 </p>
                 <p className="text-xs text-slate-500">Administrator</p>
               </div>
@@ -65,15 +71,4 @@ function getPageTitle(pathname: string | null): string {
   if (pathname.startsWith('/emails')) return 'Emails';
 
   return 'Dashboard';
-}
-
-function getUserName(): string {
-  if (typeof window === 'undefined') return 'Admin';
-
-  const user = getUser();
-  if (user) {
-    return user.name || user.email || 'Admin';
-  }
-
-  return 'Admin';
 }

@@ -1,6 +1,5 @@
 // Type definitions matching backend Prisma schema
 
-export type InviteType = 'VIP' | 'PARTNER' | 'GENERAL';
 export type AttendeeStatus = 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED';
 
 export interface Event {
@@ -32,7 +31,6 @@ export interface Invite {
   token: string;
   isUsed: boolean;
   expiresAt: string;
-  inviteType: InviteType;
   eventId: string;
   createdAt: string;
   event?: {
@@ -66,9 +64,6 @@ export interface Attendee {
   createdAt: string;
   updatedAt: string;
   plusOne?: PlusOne | null;
-  invite?: {
-    inviteType: InviteType;
-  };
   event?: {
     eventName: string;
     eventDate: string;
@@ -89,11 +84,6 @@ export interface EventStats {
     used: number;
     unused: number;
     expired: number;
-    byType: {
-      VIP: number;
-      PARTNER: number;
-      GENERAL: number;
-    };
   };
 }
 
