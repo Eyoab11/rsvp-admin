@@ -333,14 +333,6 @@ export default function InvitesPage() {
                   Event
                 </th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    Type
-                    {sortField === 'inviteType' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Status
                 </th>
                 <th
@@ -373,7 +365,7 @@ export default function InvitesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvites.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 md:px-6 py-12 text-center text-gray-500 text-sm">
+                  <td colSpan={5} className="px-4 md:px-6 py-12 text-center text-gray-500 text-sm">
                     {searchQuery || statusFilter !== 'ALL' || eventFilter !== 'ALL'
                       ? 'No invites found matching your filters.'
                       : 'No invites yet. Create your first invite!'}

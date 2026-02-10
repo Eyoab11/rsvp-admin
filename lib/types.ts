@@ -91,7 +91,11 @@ export interface DashboardStats {
   totalEvents: number;
   upcomingEvents: number;
   totalAttendees: number;
+  confirmedAttendees: number;
+  waitlistedAttendees: number;
+  cancelledAttendees: number;
   totalInvites: number;
+  usedInvites: number;
   pendingInvites: number;
   recentActivity: Activity[];
 }

@@ -15,7 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
-import { Attendee, AttendeeStatus, InviteType } from '@/lib/types';
+import { Attendee, AttendeeStatus } from '@/lib/types';
 
 export default function AttendeeDetailsPage() {
   const router = useRouter();
@@ -107,19 +107,6 @@ export default function AttendeeDetailsPage() {
         return 'bg-yellow-100 text-yellow-800';
       case 'CANCELLED':
         return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getInviteTypeBadgeColor = (type: InviteType): string => {
-    switch (type) {
-      case 'VIP':
-        return 'bg-purple-100 text-purple-800';
-      case 'PARTNER':
-        return 'bg-blue-100 text-blue-800';
-      case 'GENERAL':
-        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -313,17 +300,6 @@ export default function AttendeeDetailsPage() {
                   )}`}
                 >
                   {attendee.status}
-                </span>
-              </div>
-
-              <div>
-                <div className="text-sm text-gray-500 mb-1">Invite Type</div>
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getInviteTypeBadgeColor(
-                    attendee.invite?.inviteType || 'GENERAL'
-                  )}`}
-                >
-                  {attendee.invite?.inviteType || 'GENERAL'}
                 </span>
               </div>
 

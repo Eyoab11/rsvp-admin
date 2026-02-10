@@ -161,19 +161,6 @@ export default function InviteDetailsPage() {
     }
   };
 
-  const getTypeBadgeColor = (type: string): string => {
-    switch (type) {
-      case 'VIP':
-        return 'bg-purple-100 text-purple-800';
-      case 'PARTNER':
-        return 'bg-blue-100 text-blue-800';
-      case 'GENERAL':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -246,16 +233,6 @@ export default function InviteDetailsPage() {
                     <Mail size={16} className="text-gray-400" />
                     <span className="text-gray-900">{invite.email}</span>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Invite Type</label>
-                  <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getTypeBadgeColor(
-                      invite.inviteType
-                    )}`}
-                  >
-                    {invite.inviteType}
-                  </span>
                 </div>
               </div>
 
