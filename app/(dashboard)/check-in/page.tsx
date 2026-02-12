@@ -10,7 +10,8 @@ import { useToast } from '@/lib/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 
 interface CheckInResult {
-  valid: boolean;
+  valid?: boolean;
+  success?: boolean;
   attendee?: Attendee & {
     event: Event;
     plusOne?: {
@@ -54,7 +55,7 @@ export default function CheckInPage() {
 
   const fetchEvents = async () => {
     try {
-      const eventsData = await api.get<Event[]>('/admin/events');
+      const eventsData = await api.get<Event[]>('/event');
       setEvents(eventsData);
       if (eventsData.length > 0) {
         setSelectedEvent(eventsData[0].id);
@@ -78,8 +79,22 @@ export default function CheckInPage() {
         return;
       }
 
-      // Use the first camera (usually back camera on mobile)
-      const selectedDeviceId = videoInputDevices[0].deviceId;
+      // Prefer back camera (environment-facing) on mobile devices
+      // Back cameras typically have labels containing "back" or "environment"
+      let selectedDeviceId = videoInputDevices[0].deviceId;
+      
+      const backCamera = videoInputDevices.find(device => 
+        device.label.toLowerCase().includes('back') || 
+        device.label.toLowerCase().includes('environment') ||
+        device.label.toLowerCase().includes('rear')
+      );
+      
+      if (backCamera) {
+        selectedDeviceId = backCamera.deviceId;
+      } else if (videoInputDevices.length > 1) {
+        // If no explicit back camera found, use the last camera (often the back camera)
+        selectedDeviceId = videoInputDevices[videoInputDevices.length - 1].deviceId;
+      }
 
       if (videoRef.current) {
         codeReader.decodeFromVideoDevice(
@@ -119,20 +134,20 @@ export default function CheckInPage() {
 
     setLoading(true);
     try {
-      // Validate QR code
-      const response = await api.get<CheckInResult>(`/qr/validate/${qrCode}`);
+      // Validate QR code first
+      const validateResponse = await api.get<CheckInResult>(`/qr/validate/${qrCode}`);
       
-      if (!response.valid || !response.attendee) {
+      if (!validateResponse.valid || !validateResponse.attendee) {
         setResult({
           valid: false,
-          message: response.message || 'Invalid QR code',
+          message: validateResponse.message || 'Invalid QR code',
         });
         showError('Invalid QR code');
         return;
       }
 
       // Check if attendee belongs to selected event
-      if (response.attendee.eventId !== selectedEvent) {
+      if (validateResponse.attendee.eventId !== selectedEvent) {
         setResult({
           valid: false,
           message: 'This QR code is for a different event',
@@ -142,20 +157,32 @@ export default function CheckInPage() {
       }
 
       // Check if already checked in
-      if (response.attendee.alreadyCheckedIn) {
+      if (validateResponse.attendee.alreadyCheckedIn) {
         setResult({
           valid: true,
-          attendee: response.attendee,
+          attendee: validateResponse.attendee,
           message: 'Already checked in',
         });
         showError('Already checked in');
         return;
       }
 
+      // Perform check-in
+      const checkInResponse = await api.post<CheckInResult>(`/qr/check-in/${qrCode}`);
+      
+      if (!checkInResponse.success) {
+        setResult({
+          valid: false,
+          message: checkInResponse.message || 'Check-in failed',
+        });
+        showError(checkInResponse.message || 'Check-in failed');
+        return;
+      }
+
       // Success
       setResult({
         valid: true,
-        attendee: response.attendee,
+        attendee: checkInResponse.attendee,
       });
       success('Check-in successful!');
       
