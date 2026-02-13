@@ -24,6 +24,7 @@ interface CheckInResult {
     alreadyCheckedIn?: boolean;
   };
   message?: string;
+  alreadyCheckedIn?: boolean;
 }
 
 export default function CheckInPage() {
@@ -162,8 +163,9 @@ export default function CheckInPage() {
           valid: true,
           attendee: validateResponse.attendee,
           message: 'Already checked in',
+          alreadyCheckedIn: true,
         });
-        showError('Already checked in');
+        showError('This person is already checked in');
         return;
       }
 
@@ -296,24 +298,42 @@ export default function CheckInPage() {
           <div className="space-y-4">
             {/* Result Status */}
             <div className={`p-4 rounded-lg border-2 ${
-              result.valid 
+              result.alreadyCheckedIn
+                ? 'bg-yellow-50 border-yellow-500'
+                : result.valid 
                 ? 'bg-green-50 border-green-500' 
                 : 'bg-red-50 border-red-500'
             }`}>
               <div className="flex items-center gap-3">
-                {result.valid ? (
+                {result.alreadyCheckedIn ? (
+                  <AlertCircle className="w-8 h-8 text-yellow-600" />
+                ) : result.valid ? (
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 ) : (
                   <XCircle className="w-8 h-8 text-red-600" />
                 )}
                 <div>
                   <h3 className={`text-lg font-semibold ${
-                    result.valid ? 'text-green-900' : 'text-red-900'
+                    result.alreadyCheckedIn
+                      ? 'text-yellow-900'
+                      : result.valid 
+                      ? 'text-green-900' 
+                      : 'text-red-900'
                   }`}>
-                    {result.valid ? 'Valid Check-In' : 'Invalid QR Code'}
+                    {result.alreadyCheckedIn 
+                      ? 'Already Checked In' 
+                      : result.valid 
+                      ? 'Check-In Successful' 
+                      : 'Invalid QR Code'}
                   </h3>
                   {result.message && (
-                    <p className={result.valid ? 'text-green-700' : 'text-red-700'}>
+                    <p className={
+                      result.alreadyCheckedIn
+                        ? 'text-yellow-700'
+                        : result.valid 
+                        ? 'text-green-700' 
+                        : 'text-red-700'
+                    }>
                       {result.message}
                     </p>
                   )}
@@ -383,9 +403,16 @@ export default function CheckInPage() {
 
                 {/* Check-in Time */}
                 {result.attendee.checkedInAt && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-3">
+                  <div className={`flex items-center gap-2 text-sm mt-3 p-3 rounded-lg ${
+                    result.alreadyCheckedIn 
+                      ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' 
+                      : 'bg-green-100 text-green-800 border border-green-300'
+                  }`}>
                     <Clock size={16} />
-                    Checked in at: {new Date(result.attendee.checkedInAt).toLocaleString()}
+                    <span className="font-medium">
+                      {result.alreadyCheckedIn ? 'Previously checked in at:' : 'Checked in at:'}
+                    </span>
+                    <span>{new Date(result.attendee.checkedInAt).toLocaleString()}</span>
                   </div>
                 )}
               </div>

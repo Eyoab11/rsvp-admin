@@ -31,6 +31,7 @@ interface AttendeeRow {
   type: 'ATTENDEE' | 'PLUSONE';
   primaryAttendeeName?: string;
   plusOneName?: string;
+  checkedInAt?: string | null;
 }
 
 export default function AttendeesPage() {
@@ -70,6 +71,7 @@ export default function AttendeesPage() {
         createdAt: attendee.createdAt,
         type: 'ATTENDEE',
         plusOneName: attendee.plusOne?.name,
+        checkedInAt: attendee.checkedInAt,
       });
       
       if (attendee.plusOne) {
@@ -86,6 +88,7 @@ export default function AttendeesPage() {
           createdAt: attendee.createdAt,
           type: 'PLUSONE',
           primaryAttendeeName: attendee.name,
+          checkedInAt: attendee.plusOne.checkedInAt,
         });
       }
     });
@@ -321,6 +324,16 @@ export default function AttendeesPage() {
                     {row.status === 'PLUS_ONE' ? 'Plus One' : row.status}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Checked In:</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      row.checkedInAt ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {row.checkedInAt ? '✓ Yes' : 'No'}
+                  </span>
+                </div>
               </div>
 
               {row.type === 'ATTENDEE' && (
@@ -381,6 +394,7 @@ export default function AttendeesPage() {
                 <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100 whitespace-nowrap">
                   Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Checked In</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Related</th>
                 <th onClick={() => handleSort('createdAt')} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100 whitespace-nowrap">
                   Date {sortField === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -391,7 +405,7 @@ export default function AttendeesPage() {
             <tbody className="divide-y divide-slate-200">
               {paginatedAttendees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500 text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500 text-sm">
                     No attendees found
                   </td>
                 </tr>
@@ -412,6 +426,11 @@ export default function AttendeesPage() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${row.status === 'PLUS_ONE' ? 'bg-purple-100 text-purple-800' : getStatusBadgeColor(row.status as AttendeeStatus)}`}>
                         {row.status === 'PLUS_ONE' ? 'Plus One' : row.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${row.checkedInAt ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {row.checkedInAt ? '✓ Yes' : 'No'}
                       </span>
                     </td>
                     <td className="px-4 py-3">

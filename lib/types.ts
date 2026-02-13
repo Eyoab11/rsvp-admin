@@ -48,6 +48,7 @@ export interface PlusOne {
   email: string;
   attendeeId: string;
   createdAt: string;
+  checkedInAt?: string | null;
 }
 
 export interface Attendee {
@@ -63,6 +64,7 @@ export interface Attendee {
   eventId: string;
   createdAt: string;
   updatedAt: string;
+  checkedInAt?: string | null;
   plusOne?: PlusOne | null;
   event?: {
     eventName: string;
