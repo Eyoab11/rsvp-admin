@@ -279,7 +279,6 @@ export default function CheckInPage() {
               <video
                 ref={videoRef}
                 className="absolute top-0 left-0 w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
               />
               <div className="absolute inset-0 border-4 border-blue-500 pointer-events-none">
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white rounded-lg"></div>
