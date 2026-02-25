@@ -12,6 +12,7 @@ import {
   BarChart3,
   QrCode,
   Sheet,
+  Key,
 } from 'lucide-react';
 import { useState } from 'react';
 import { clearAuthToken } from '@/lib/auth';
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Attendees', href: '/attendees', icon: Users },
   { label: 'Invites', href: '/invites', icon: Mail },
+  { label: 'Generate Tokens', href: '/generate-tokens', icon: Key },
   { label: 'Check-In', href: '/check-in', icon: QrCode },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Attendee Sheet', href: '/attendee-sheet', icon: Sheet },
