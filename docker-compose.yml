@@ -1,0 +1,11 @@
+services:
+  rsvp-admin-app:
+    container_name: rsvp-admin-website-staging
+    build: saulgoodmn/rsvp-admin:staging
+    ports:
+      - "127.0.0.1:6632:3000"
+    env_file:
+      - .env.staging
+    environment:
+      - NODE_ENV=staging
+    restart: unless-stopped
