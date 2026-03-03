@@ -305,6 +305,7 @@ export default function EventsPage() {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
+                          timeZone: 'UTC',
                         })}
                       </td>
                       <td className="px-6 py-4">
@@ -395,6 +396,7 @@ export default function EventsPage() {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
+                            timeZone: 'UTC',
                           })}
                         </span>
                       </div>

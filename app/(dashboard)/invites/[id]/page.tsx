@@ -275,6 +275,7 @@ export default function InviteDetailsPage() {
                         month: 'long',
                         day: 'numeric',
                         year: 'numeric',
+                        timeZone: 'UTC',
                       })}
                     </div>
                   </div>

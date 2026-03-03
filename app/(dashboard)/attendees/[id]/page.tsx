@@ -234,6 +234,7 @@ export default function AttendeeDetailsPage() {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
+                          timeZone: 'UTC',
                         })
                       : 'N/A'}
                   </div>
