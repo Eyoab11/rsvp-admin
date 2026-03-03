@@ -386,7 +386,7 @@ export default function InvitesPage() {
                         <div>
                           <div className="text-xs md:text-sm text-gray-900">{invite.event?.eventName}</div>
                           <div className="text-xs text-gray-500">
-                            {invite.event?.eventDate && new Date(invite.event.eventDate).toLocaleDateString()}
+                            {invite.event?.eventDate && new Date(invite.event.eventDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                           </div>
                         </div>
                       </td>

@@ -268,7 +268,7 @@ export default function NewInvitePage() {
               >
                 {events.map((event) => (
                   <option key={event.id} value={event.id}>
-                    {event.eventName} - {new Date(event.eventDate).toLocaleDateString()}
+                    {event.eventName} - {new Date(event.eventDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </option>
                 ))}
               </select>
@@ -336,7 +336,7 @@ export default function NewInvitePage() {
               >
                 {events.map((event) => (
                   <option key={event.id} value={event.id}>
-                    {event.eventName} - {new Date(event.eventDate).toLocaleDateString()}
+                    {event.eventName} - {new Date(event.eventDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </option>
                 ))}
               </select>
