@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
-import { DashboardStats } from '@/lib/types';
+import { DashboardStats, Event, Attendee } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [totalAttendeesWithPlusOnes, setTotalAttendeesWithPlusOnes] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,8 +20,27 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Fetch dashboard stats
       const data = await api.get<DashboardStats>(endpoints.admin.dashboardStats());
       setStats(data);
+      
+      // Fetch all events to get attendees with plus ones
+      const events = await api.get<Event[]>(endpoints.events.list());
+      let totalCount = 0;
+      
+      for (const event of events) {
+        try {
+          const attendees = await api.get<Attendee[]>(`/admin/events/${event.id}/attendees`);
+          // Count attendees + their plus ones
+          totalCount += attendees.length;
+          totalCount += attendees.filter(a => a.plusOne).length;
+        } catch (err) {
+          console.warn(`Failed to fetch attendees for event ${event.id}:`, err);
+        }
+      }
+      
+      setTotalAttendeesWithPlusOnes(totalCount);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -45,8 +65,8 @@ export default function DashboardPage() {
   }
 
   // Calculate check-in rate (placeholder - will be calculated from actual data)
-  const checkInRate = stats.totalAttendees > 0 
-    ? Math.round((stats.totalAttendees * 0.75) * 100) / 100 // Placeholder calculation
+  const checkInRate = totalAttendeesWithPlusOnes > 0 
+    ? Math.round((totalAttendeesWithPlusOnes * 0.75) * 100) / 100 // Placeholder calculation
     : 0;
 
   return (
@@ -79,8 +99,8 @@ export default function DashboardPage() {
         {/* Total Attendees */}
         <StatCard
           title="Total Attendees"
-          value={stats.totalAttendees}
-          subtitle="Registered"
+          value={totalAttendeesWithPlusOnes}
+          subtitle="Including plus ones"
           icon={
             <svg
               className="w-6 h-6"
