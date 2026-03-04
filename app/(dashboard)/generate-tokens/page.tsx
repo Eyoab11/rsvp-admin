@@ -400,8 +400,7 @@ export default function GenerateTokensPage() {
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
               {tokenHistory.map((token) => {
                 const isExpired = new Date(token.expiresAt) < new Date();
-                const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-                const tokenUrl = `${frontendUrl}/?token=${token.token}`;
+                const tokenUrl = `https://event.levyeromomedia.com/?token=${token.token}`;
                 
                 return (
                   <div
