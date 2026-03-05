@@ -65,9 +65,7 @@ export default function DashboardPage() {
   }
 
   // Calculate check-in rate (placeholder - will be calculated from actual data)
-  const checkInRate = totalAttendeesWithPlusOnes > 0 
-    ? Math.round((totalAttendeesWithPlusOnes * 0.75) * 100) / 100 // Placeholder calculation
-    : 0;
+  const checkInRate = stats.checkInRate || 0;
 
   return (
     <div className="space-y-6">
@@ -146,7 +144,7 @@ export default function DashboardPage() {
         <StatCard
           title="Check-in Rate"
           value={`${checkInRate}%`}
-          subtitle="Average attendance"
+          subtitle={`${stats.totalCheckedIn} checked in`}
           icon={
             <svg
               className="w-6 h-6"

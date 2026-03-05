@@ -99,6 +99,8 @@ export interface DashboardStats {
   totalInvites: number;
   usedInvites: number;
   pendingInvites: number;
+  totalCheckedIn: number;
+  checkInRate: number;
   recentActivity: Activity[];
 }
 
