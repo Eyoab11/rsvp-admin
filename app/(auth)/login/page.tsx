@@ -43,8 +43,12 @@ function LoginContent() {
         setAuthToken(response.token);
         setUser(response.user);
         
-        // Redirect to dashboard
-        router.push('/');
+        // Role-based redirect
+        if (response.user.role === 'checkin') {
+          router.push('/checkin');
+        } else {
+          router.push('/');
+        }
         router.refresh(); // Force a refresh to trigger middleware
       } else {
         setError('Invalid response from server');

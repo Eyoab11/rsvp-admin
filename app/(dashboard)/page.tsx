@@ -1,20 +1,36 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
 import { DashboardStats, Event, Attendee } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
+import { isAuthenticated, getUser } from '@/lib/auth';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [totalAttendeesWithPlusOnes, setTotalAttendeesWithPlusOnes] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check authentication and role
+    if (!isAuthenticated()) {
+      router.push('/login');
+      return;
+    }
+
+    const user = getUser();
+    if (user && user.role === 'checkin') {
+      // Redirect check-in users to their dedicated page
+      router.push('/checkin');
+      return;
+    }
+
     fetchDashboardStats();
-  }, []);
+  }, [router]);
 
   const fetchDashboardStats = async () => {
     try {

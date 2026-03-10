@@ -25,6 +25,12 @@ export default function DashboardLayout({
     const user = getUser();
     if (user) {
       setUserName(user.name || user.email || 'Admin');
+      
+      // Redirect check-in users to their dedicated page
+      if (user.role === 'checkin') {
+        router.push('/checkin');
+        return;
+      }
     }
   }, [router, pathname]);
 
