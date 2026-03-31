@@ -160,7 +160,16 @@ export const endpoints = {
   invites: {
     list: (eventId: string) => `/invite/event/${eventId}`,
     create: () => '/invite/create',
+    update: (id: string) => `/invite/${id}`,
+    delete: (id: string) => `/invite/${id}`,
     resend: (id: string) => `/invite/resend/${id}`,
+  },
+
+  // Plus ones (admin)
+  plusOnes: {
+    add: (attendeeId: string) => `/admin/attendees/${attendeeId}/plus-one`,
+    update: (plusOneId: string) => `/admin/plus-ones/${plusOneId}`,
+    delete: (plusOneId: string) => `/admin/plus-ones/${plusOneId}`,
   },
 
   // RSVP
