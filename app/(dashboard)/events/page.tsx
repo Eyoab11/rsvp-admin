@@ -2,41 +2,35 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Calendar, MapPin, Users, Trash2, Edit } from 'lucide-react';
 import { api, endpoints, getErrorMessage } from '@/lib/api';
 import { Event } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { useToast } from '@/lib/hooks/useToast';
-import { ToastContainer } from '@/components/ui/Toast';
-
-type SortField = 'eventName' | 'eventDate' | 'capacity' | 'currentRegistrations';
-type SortOrder = 'asc' | 'desc';
+import { 
+  Plus, 
+  Calendar, 
+  MapPin, 
+  Users, 
+  DollarSign, 
+  Edit, 
+  Trash2,
+  Eye,
+  MoreVertical,
+  Clock,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 
 export default function EventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<SortField>('eventDate');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const { toasts, closeToast, success, error: showError } = useToast();
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
   useEffect(() => {
     fetchEvents();
   }, []);
-
-  useEffect(() => {
-    filterAndSortEvents();
-  }, [events, searchQuery, sortField, sortOrder]);
 
   const fetchEvents = async () => {
     try {
@@ -51,442 +45,240 @@ export default function EventsPage() {
     }
   };
 
-  const filterAndSortEvents = () => {
-    let filtered = [...events];
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (event) =>
-          event.eventName.toLowerCase().includes(query) ||
-          event.venueName.toLowerCase().includes(query) ||
-          event.venueCity.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
-
-      if (sortField === 'eventDate') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      }
-
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredEvents(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const handleDelete = async (id: string, eventName: string) => {
-    setEventToDelete({ id, name: eventName });
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!eventToDelete) return;
-
-    try {
-      setDeleting(true);
-      await api.delete(endpoints.events.delete(eventToDelete.id));
-      setEvents(events.filter((e) => e.id !== eventToDelete.id));
-      success('Event Deleted', `"${eventToDelete.name}" has been deleted successfully.`);
-      setDeleteDialogOpen(false);
-      setEventToDelete(null);
-    } catch (err) {
-      const errorMsg = getErrorMessage(err);
-      showError('Failed to Delete Event', errorMsg);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const getEventStatus = (eventDate: string): 'upcoming' | 'ongoing' | 'past' => {
+  const filteredEvents = events.filter(event => {
+    const eventDate = new Date(event.eventDate);
     const now = new Date();
-    const date = new Date(eventDate);
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const eventDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    if (eventDay > today) return 'upcoming';
-    if (eventDay.getTime() === today.getTime()) return 'ongoing';
-    return 'past';
-  };
-
-  const getCapacityColor = (current: number, total: number): string => {
-    const utilization = (current / total) * 100;
-    if (utilization >= 90) return 'text-red-600';
-    if (utilization >= 75) return 'text-yellow-600';
-    return 'text-green-600';
-  };
-
-  // Pagination
-  const totalPages = Math.ceil(filteredEvents.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
+    
+    if (filter === 'upcoming') return eventDate >= now;
+    if (filter === 'past') return eventDate < now;
+    return true;
+  });
 
   if (loading) {
     return <LoadingSpinner message="Loading events..." />;
   }
 
   if (error) {
-    return <ErrorMessage message={error} onRetry={fetchEvents} />;
+    return <ErrorMessage title="Failed to load events" message={error} onRetry={fetchEvents} />;
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <ToastContainer toasts={toasts} onClose={closeToast} />
-      
-      <ConfirmDialog
-        isOpen={deleteDialogOpen}
-        onClose={() => {
-          setDeleteDialogOpen(false);
-          setEventToDelete(null);
-        }}
-        onConfirm={confirmDelete}
-        title="Delete Event"
-        message={
-          <div>
-            <p>Are you sure you want to delete <strong>"{eventToDelete?.name}"</strong>?</p>
-            <p className="mt-2 text-xs">This action cannot be undone. All associated data will be permanently removed.</p>
-          </div>
-        }
-        confirmText="Delete Event"
-        cancelText="Cancel"
-        variant="danger"
-        loading={deleting}
-      />
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+    <div className="space-y-6">
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Events</h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base">Manage your RSVP events</p>
+          <h3 className="text-lg font-semibold text-slate-900">All Events</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage your events and create new ones
+          </p>
         </div>
         <button
-          onClick={() => router.push('/events/new')}
-          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+          onClick={() => router.push('/events/create')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all font-medium"
         >
-          <Plus size={20} />
-          <span className="hidden sm:inline">Create Event</span>
-          <span className="sm:hidden">Create</span>
+          <Plus className="w-5 h-5" />
+          Create Event
         </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+            filter === 'all'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          All Events ({events.length})
+        </button>
+        <button
+          onClick={() => setFilter('upcoming')}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+            filter === 'upcoming'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Upcoming ({events.filter(e => new Date(e.eventDate) >= new Date()).length})
+        </button>
+        <button
+          onClick={() => setFilter('past')}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+            filter === 'past'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Past ({events.filter(e => new Date(e.eventDate) < new Date()).length})
+        </button>
+      </div>
+
+      {/* Events Grid */}
+      {filteredEvents.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-xl border-2 border-dashed border-slate-200">
+          <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">
+            No events found
+          </h3>
+          <p className="text-slate-500 mb-6">
+            Get started by creating your first event
+          </p>
+          <button
+            onClick={() => router.push('/events/create')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            <option value={10}>10 per page</option>
-            <option value={20}>20 per page</option>
-            <option value={50}>50 per page</option>
-            <option value={100}>100 per page</option>
-          </select>
+            <Plus className="w-5 h-5" />
+            Create Event
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredEvents.map((event) => (
+            <EventCard key={event.id} event={event} onRefresh={fetchEvents} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface EventCardProps {
+  event: Event;
+  onRefresh: () => void;
+}
+
+function EventCard({ event, onRefresh }: EventCardProps) {
+  const router = useRouter();
+  const [showMenu, setShowMenu] = useState(false);
+  const eventDate = new Date(event.eventDate);
+  const isPast = eventDate < new Date();
+  const isToday = eventDate.toDateString() === new Date().toDateString();
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+    
+    try {
+      await api.delete(endpoints.events.delete(event.id));
+      onRefresh();
+    } catch (err) {
+      alert('Failed to delete event: ' + getErrorMessage(err));
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 hover:shadow-xl transition-all overflow-hidden group">
+      {/* Event Header with Status Badge */}
+      <div className="relative p-6 border-b border-slate-100">
+        <div className="flex items-start justify-between gap-4">
+          <h3 className="text-xl font-bold text-slate-900 line-clamp-2 flex-1">
+            {event.eventName}
+          </h3>
+          <div className="flex-shrink-0">
+            {isPast ? (
+              <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full flex items-center gap-1">
+                <XCircle className="w-3 h-3" />
+                Past
+              </span>
+            ) : isToday ? (
+              <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                Today
+              </span>
+            ) : (
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Upcoming
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Events Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {/* Desktop Table View */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th
-                  onClick={() => handleSort('eventName')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-2">
-                    Event Name
-                    {sortField === 'eventName' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('eventDate')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-2">
-                    Date
-                    {sortField === 'eventDate' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th
-                  onClick={() => handleSort('capacity')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-2">
-                    Capacity
-                    {sortField === 'capacity' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('currentRegistrations')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-2">
-                    Attendees
-                    {sortField === 'currentRegistrations' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedEvents.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    {searchQuery ? 'No events found matching your search.' : 'No events yet. Create your first event!'}
-                  </td>
-                </tr>
-              ) : (
-                paginatedEvents.map((event) => {
-                  const status = getEventStatus(event.eventDate);
-                  const capacityColor = getCapacityColor(event.currentRegistrations, event.capacity);
-                  const utilization = Math.round((event.currentRegistrations / event.capacity) * 100);
-
-                  return (
-                    <tr key={event.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={16} className="text-gray-400" />
-                          <div>
-                            <div className="font-medium text-gray-900">{event.eventName}</div>
-                            <div className="text-sm text-gray-500">{event.eventStartTime} - {event.eventEndTime}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {new Date(event.eventDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          timeZone: 'UTC',
-                        })}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <MapPin size={16} className="text-gray-400" />
-                          <div>
-                            <div className="text-sm text-gray-900">{event.venueName}</div>
-                            <div className="text-xs text-gray-500">
-                              {event.venueCity}, {event.venueState}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {event.capacity}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Users size={16} className="text-gray-400" />
-                          <div>
-                            <div className={`text-sm font-medium ${capacityColor}`}>
-                              {event.currentRegistrations} / {event.capacity}
-                            </div>
-                            <div className="text-xs text-gray-500">{utilization}% full</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            status === 'upcoming'
-                              ? 'bg-blue-100 text-blue-800'
-                              : status === 'ongoing'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => router.push(`/dashboard/events/${event.id}`)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit event"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(event.id, event.eventName)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete event"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="lg:hidden divide-y divide-gray-200">
-          {paginatedEvents.length === 0 ? (
-            <div className="px-4 py-12 text-center text-gray-500">
-              {searchQuery ? 'No events found matching your search.' : 'No events yet. Create your first event!'}
+      {/* Event Details */}
+      <div className="p-6 space-y-4">
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 text-sm">
+            <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-slate-900 font-medium">
+                {eventDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+              <p className="text-slate-500 text-xs mt-0.5">
+                {event.eventStartTime}
+              </p>
             </div>
-          ) : (
-            paginatedEvents.map((event) => {
-              const status = getEventStatus(event.eventDate);
-              const capacityColor = getCapacityColor(event.currentRegistrations, event.capacity);
-              const utilization = Math.round((event.currentRegistrations / event.capacity) * 100);
+          </div>
 
-              return (
-                <div key={event.id} className="p-4 hover:bg-gray-50">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 mb-1">{event.eventName}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                        <Calendar size={14} />
-                        <span>
-                          {new Date(event.eventDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            timeZone: 'UTC',
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <MapPin size={14} />
-                        <span>{event.venueName}, {event.venueCity}</span>
-                      </div>
-                    </div>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        status === 'upcoming'
-                          ? 'bg-blue-100 text-blue-800'
-                          : status === 'ongoing'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {status}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Users size={16} className="text-gray-400" />
-                      <span className={`text-sm font-medium ${capacityColor}`}>
-                        {event.currentRegistrations} / {event.capacity}
-                      </span>
-                      <span className="text-xs text-gray-500">({utilization}% full)</span>
-                    </div>
-                  </div>
+          <div className="flex items-start gap-3 text-sm">
+            <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <p className="text-slate-600 line-clamp-2">{event.venueName}</p>
+          </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => router.push(`/dashboard/events/${event.id}`)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                    >
-                      <Edit size={16} />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(event.id, event.eventName)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })
+          {event.capacity && (
+            <div className="flex items-center gap-3 text-sm">
+              <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <p className="text-slate-600">
+                Capacity: <span className="font-medium text-slate-900">{event.capacity}</span>
+              </p>
+            </div>
           )}
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-4 md:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredEvents.length)} of {filteredEvents.length} events
-            </div>
-            <div className="flex items-center gap-2 flex-wrap justify-center">
-              <button
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 rounded-lg text-sm ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                Next
-              </button>
-            </div>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
+          <button
+            onClick={() => router.push(`/attendees?eventId=${event.id}`)}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium text-sm"
+          >
+            <Users className="w-4 h-4" />
+            Attendees
+          </button>
+          <button
+            onClick={() => router.push(`/events/${event.id}`)}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
+          >
+            <Eye className="w-4 h-4" />
+            View
+          </button>
+          <button
+            onClick={() => router.push(`/events/${event.id}/edit`)}
+            className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors font-medium text-sm"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <MoreVertical className="w-4 h-4 text-slate-600" />
+            </button>
+            {showMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-20">
+                  <button
+                    onClick={handleDelete}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Event
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

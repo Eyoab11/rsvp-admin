@@ -7,11 +7,13 @@ import { DashboardStats, Event, Attendee } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 import { isAuthenticated, getUser } from '@/lib/auth';
+import { Calendar, MapPin, Users, Clock, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [totalAttendeesWithPlusOnes, setTotalAttendeesWithPlusOnes] = useState<number>(0);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,7 @@ export default function DashboardPage() {
       
       // Fetch all events to get attendees with plus ones
       const events = await api.get<Event[]>(endpoints.events.list());
+      setEvents(events);
       let totalCount = 0;
       
       for (const event of events) {
@@ -178,6 +181,101 @@ export default function DashboardPage() {
           }
           color="purple"
         />
+      </div>
+
+      {/* Events Section */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Events</h3>
+          <button
+            onClick={() => router.push('/events')}
+            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+          >
+            View all <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {events.length === 0 ? (
+          <div className="text-center py-8 text-slate-500 text-sm">
+            No events yet.{' '}
+            <button onClick={() => router.push('/events/create')} className="text-blue-600 hover:underline">
+              Create one
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {events.map((event) => {
+              const eventDate = new Date(event.eventDate);
+              const isPast = eventDate < new Date();
+              const isToday = eventDate.toDateString() === new Date().toDateString();
+              const fillPct = event.capacity > 0
+                ? Math.min(100, Math.round((event.currentRegistrations / event.capacity) * 100))
+                : 0;
+
+              return (
+                <button
+                  key={event.id}
+                  onClick={() => router.push(`/attendees?eventId=${event.id}`)}
+                  className="w-full text-left group flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 transition-all"
+                >
+                  {/* Status dot */}
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                    isPast ? 'bg-slate-300' : isToday ? 'bg-green-500' : 'bg-blue-500'
+                  }`} />
+
+                  {/* Event info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-slate-900 text-sm truncate group-hover:text-blue-700 transition-colors">
+                        {event.eventName}
+                      </p>
+                      <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        isPast
+                          ? 'bg-slate-100 text-slate-500'
+                          : isToday
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {isPast ? 'Past' : isToday ? 'Today' : 'Upcoming'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={11} />
+                        {eventDate.toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+                        })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin size={11} />
+                        {event.venueName}
+                      </span>
+                    </div>
+
+                    {/* Capacity bar */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            fillPct >= 90 ? 'bg-red-500' : fillPct >= 70 ? 'bg-yellow-500' : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${fillPct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 whitespace-nowrap flex items-center gap-1">
+                        <Users size={11} />
+                        {event.currentRegistrations} / {event.capacity}
+                      </span>
+                    </div>
+                  </div>
+
+                  <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 flex-shrink-0 transition-colors" />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Recent Activity */}

@@ -132,6 +132,87 @@ export interface EmailLog {
   } | null;
 }
 
+// Booking types
+export type BookingType = 'TICKET' | 'SPONSOR' | 'BRANDING';
+export type BookingStatus = 'PENDING' | 'CONTACTED' | 'CONFIRMED' | 'CANCELLED';
+export type SponsorStatus = 'INQUIRY' | 'NEGOTIATING' | 'CONFIRMED' | 'ACTIVE' | 'INACTIVE';
+export type NotificationType = 'NEW_BOOKING' | 'NEW_SPONSOR' | 'NEW_BRANDING' | 'STATUS_UPDATE';
+
+export interface Booking {
+  id: string;
+  type: BookingType;
+  status: BookingStatus;
+  createdAt: string;
+  updatedAt: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  companyName?: string;
+  ticketTier?: string;
+  ticketName?: string;
+  sponsorTier?: string;
+  quantity: number;
+  pricePerUnit: number;
+  totalAmount: number;
+  seatNumbers?: string[];
+  tableNumber?: string;
+  specialRequests?: string;
+  dietaryRestrictions?: string;
+  tablePreferences?: string;
+  message?: string;
+  adminNotes?: string;
+  followUpDate?: string;
+  assignedTo?: string;
+  sponsor?: Sponsor;
+  plusOnes?: IlluminatePlusOne[];
+}
+
+export interface IlluminatePlusOne {
+  id: string;
+  bookingId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  qrCode: string;
+  seatNumber?: string;
+  dietaryRestrictions?: string;
+  specialRequests?: string;
+  checkedIn: boolean;
+  checkedInAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Sponsor {
+  id: string;
+  bookingId: string;
+  tier: string;
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  description?: string;
+  status: SponsorStatus;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  booking?: Booking;
+}
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  entityType?: string;
+  entityId?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 // API Response wrapper
 export interface APIResponse<T> {
   data?: T;
