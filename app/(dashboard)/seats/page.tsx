@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   MapPin, Plus, Users, Loader2, AlertCircle, X, Trash2, Unlock,
-  RefreshCw, ChevronDown, ChevronUp, Eye, EyeOff, Search, UserPlus, CheckCircle,
+  RefreshCw, ChevronDown, ChevronUp, Eye, EyeOff, Search, UserPlus, CheckCircle, Download,
 } from 'lucide-react';
 import { illuminateApi, getErrorMessage } from '@/lib/api';
 
@@ -506,6 +506,52 @@ export default function SeatsPage() {
   const [releasingSeat, setReleasingSeat] = useState<{ id: string; number: string; customerName?: string } | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<(Seat & { id: string }) | null>(null);
 
+  // Export seats to CSV
+  const exportSeatsToCSV = () => {
+    const headers = [
+      'Seat Number',
+      'Table Number',
+      'Seat Type',
+      'Status',
+      'Booking ID',
+      'Customer Name',
+      'Customer Email',
+    ];
+
+    // Natural numeric sort: T1-01 < T2-01 < T10-01
+    const sortedSeats = [...seats].sort((a, b) => {
+      const parseKey = (sn: string) => {
+        const m = sn.match(/^T(\d+)-(\d+)$/);
+        return m ? [parseInt(m[1], 10), parseInt(m[2], 10)] : [Infinity, Infinity];
+      };
+      const [aT, aS] = parseKey(a.seatNumber);
+      const [bT, bS] = parseKey(b.seatNumber);
+      return aT !== bT ? aT - bT : aS - bS;
+    });
+
+    const csvRows = sortedSeats.map((seat) => [
+      seat.seatNumber,
+      seat.tableNumber ? `T${seat.tableNumber}` : (seat.seatNumber.match(/^T(\d+)-/) ? `T${seat.seatNumber.match(/^T(\d+)-/)![1]}` : ''),
+      seat.seatType,
+      seat.isAvailable ? 'Available' : 'Reserved',
+      seat.bookingId || '',
+      seat.booking?.customerName || '',
+      seat.booking?.customerEmail || '',
+    ]);
+
+    const csv = [headers, ...csvRows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `seats-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Derive the highest table number across base + extra rows
   const allTableNums = [
     ...BASE_ROWS.flatMap(r => r.tables),
@@ -771,6 +817,9 @@ export default function SeatsPage() {
 
       {/* ── Toolbar ── */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap items-center gap-3">
+        <button onClick={exportSeatsToCSV} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+          <Download className="w-4 h-4" /> Export
+        </button>
         <button onClick={loadSeats} className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>

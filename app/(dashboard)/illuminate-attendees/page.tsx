@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, RefreshCw, Armchair, Loader2, Mail, X, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, Armchair, Loader2, Mail, X, AlertCircle, Download } from 'lucide-react';
 import { illuminateApi, getErrorMessage } from '@/lib/api';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
@@ -223,7 +223,7 @@ export default function IlluminateAttendeesPage() {
       r.ticketName,
       r.quantity,
       r.seatNumbers.join('; '),
-      r.tableNumber || '',
+      r.tableNumber ? `Table ${r.tableNumber}` : '',
       r.sectionName || '',
       r.status,
       r.totalAmount.toFixed(2),
@@ -272,13 +272,23 @@ export default function IlluminateAttendeesPage() {
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">Illuminate Attendees</h1>
             <p className="text-gray-500 mt-0.5 text-xs md:text-sm">Confirmed ticket holders for the Illuminate Life Gala</p>
           </div>
-          <button
-            onClick={fetchData}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <RefreshCw size={14} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportCsv}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              title="Export filtered attendees to CSV"
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={fetchData}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <RefreshCw size={14} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -33,20 +33,34 @@ export function clearAuthToken(): void {
 export function isAuthenticated(): boolean {
   const token = getAuthToken();
   if (!token) return false;
-  
-  // Check if token is expired (7 days = 604800000 ms)
-  const timestamp = localStorage.getItem('auth_token_timestamp');
-  if (timestamp) {
-    const tokenAge = Date.now() - parseInt(timestamp, 10);
-    const sevenDays = 7 * 24 * 60 * 60 * 1000;
-    
-    if (tokenAge > sevenDays) {
-      // Token expired, clear it
+
+  // Decode the JWT payload and check the actual exp claim
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
       clearAuthToken();
       return false;
     }
+    // Base64url decode the payload
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      // JWT has expired
+      clearAuthToken();
+      return false;
+    }
+  } catch {
+    // If we can't decode the token, fall back to the timestamp check
+    const timestamp = localStorage.getItem('auth_token_timestamp');
+    if (timestamp) {
+      const tokenAge = Date.now() - parseInt(timestamp, 10);
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      if (tokenAge > sevenDays) {
+        clearAuthToken();
+        return false;
+      }
+    }
   }
-  
+
   return true;
 }
 
